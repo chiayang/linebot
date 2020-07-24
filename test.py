@@ -1,63 +1,138 @@
-from __future__ import unicode_literals
-import os
-from flask import Flask, request, abort
-from linebot import LineBotApi, WebhookHandler
-from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent, TextMessage, TextSendMessage
+import os, sys
 
-import configparser
+from flask import Flask, request, abort, jsonify
+import requests
 
-import random
+from linebot import (
+    LineBotApi, WebhookHandler
+)
+from linebot.exceptions import (
+    InvalidSignatureError
+)
+from linebot.models import (
+    MessageEvent, TextMessage, TextSendMessage,
+)
 
 app = Flask(__name__)
 
-# LINE 聊天機器人的基本資料
-config = configparser.ConfigParser()
-config.read('config.ini')
+# get channel_secret and channel_access_token from your environment variable
+channel_secret = os.getenv('c06432784369678e5fe946f458e75a68', None)
+channel_access_token = os.getenv('nu2OHZJBl5br8W4zT7CcyLy+kvc1ed5d1oLr7Zw+oBUnfC0BmoHOELiYJ9k51UhHgAY0S36N7eIi5NQ/9eAs5fRQn4Rb2r1Emy1JCA00MyfpKKffgLrczTpdADLUEp5Z+4oKX/tgq4WRo1JtFykUnQdB04t89/1O/w1cDnyilFU=', None)
+if channel_secret is None or channel_access_token is None:
+    print('Specify LINE_CHANNEL_SECRET and LINE_CHANNEL_ACCESS_TOKEN as environment variables.')
+    sys.exit(1)
 
-line_bot_api = LineBotApi('nu2OHZJBl5br8W4zT7CcyLy+kvc1ed5d1oLr7Zw+oBUnfC0BmoHOELiYJ9k51UhHgAY0S36N7eIi5NQ/9eAs5fRQn4Rb2r1Emy1JCA00MyfpKKffgLrczTpdADLUEp5Z+4oKX/tgq4WRo1JtFykUnQdB04t89/1O/w1cDnyilFU=')
-handler = WebhookHandler('c06432784369678e5fe946f458e75a68')
+line_bot_api = LineBotApi(channel_access_token)
+handler = WebhookHandler(channel_secret)
 
 
-# 接收 LINE 的資訊
-@app.route("/callback", methods=['POST'])
+@app.route('/callback', methods=['POST'])
 def callback():
+    # get X-Line-Signature header value
     signature = request.headers['X-Line-Signature']
 
+    # get request body as text
     body = request.get_data(as_text=True)
-    app.logger.info("Request body: " + body)
-    
+    app.logger.info('Request body: ' + body)
+
+    # handle webhook body
     try:
-        print(body, signature)
         handler.handle(body, signature)
-        
     except InvalidSignatureError:
+        print('Invalid signature. Please check your channel access token/channel secret.')
         abort(400)
 
     return 'OK'
 
-# 學你說話
 @handler.add(MessageEvent, message=TextMessage)
-def pretty_echo(event):
-    
-    if event.source.user_id != "Uc5df4ddce57b7997360dac4805a42fca":
-        
-        # Phoebe 愛唱歌
-        pretty_note = '♫♪♬'
-        pretty_text = ''
-        
-        for i in event.message.text:
-        
-            pretty_text += i
-            pretty_text += random.choice(pretty_note)
-    
+def handle_message(event):
+    input_text = event.message.text
+
+    if input_text == '@查詢匯率':
+        resp = requests.get('https://tw.rter.info/capi.php')
+        currency_data = resp.json()
+        usd_to_twd = currency_data['USDTWD']['Exrate']
+
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text=pretty_text)
-        )
+            TextSendMessage(text=f'美元 USD 對台幣 TWD：1:{usd_to_twd}'))
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
     app.run()
+
+
+
+
+
+
+
+
+
+
+
+
+
+# from __future__ import unicode_literals
+# import os
+# from flask import Flask, request, abort
+# from linebot import LineBotApi, WebhookHandler
+# from linebot.exceptions import InvalidSignatureError
+# from linebot.models import MessageEvent, TextMessage, TextSendMessage
+
+# import configparser
+
+# import random
+
+# app = Flask(__name__)
+
+# # LINE 聊天機器人的基本資料
+# config = configparser.ConfigParser()
+# config.read('config.ini')
+
+# line_bot_api = LineBotApi('nu2OHZJBl5br8W4zT7CcyLy+kvc1ed5d1oLr7Zw+oBUnfC0BmoHOELiYJ9k51UhHgAY0S36N7eIi5NQ/9eAs5fRQn4Rb2r1Emy1JCA00MyfpKKffgLrczTpdADLUEp5Z+4oKX/tgq4WRo1JtFykUnQdB04t89/1O/w1cDnyilFU=')
+# handler = WebhookHandler('c06432784369678e5fe946f458e75a68')
+
+
+# # 接收 LINE 的資訊
+# @app.route("/callback", methods=['POST'])
+# def callback():
+#     signature = request.headers['X-Line-Signature']
+
+#     body = request.get_data(as_text=True)
+#     app.logger.info("Request body: " + body)
+    
+#     try:
+#         print(body, signature)
+#         handler.handle(body, signature)
+        
+#     except InvalidSignatureError:
+#         abort(400)
+
+#     return 'OK'
+
+# # 學你說話
+# @handler.add(MessageEvent, message=TextMessage)
+# def pretty_echo(event):
+    
+#     if event.source.user_id != "Uc5df4ddce57b7997360dac4805a42fca":
+        
+#         # Phoebe 愛唱歌
+#         pretty_note = '♫♪♬'
+#         pretty_text = ''
+        
+#         for i in event.message.text:
+        
+#             pretty_text += i
+#             pretty_text += random.choice(pretty_note)
+    
+#         line_bot_api.reply_message(
+#             event.reply_token,
+#             TextSendMessage(text=pretty_text)
+#         )
+
+# if __name__ == "__main__":
+#     app.run()
 
 
 
