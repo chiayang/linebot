@@ -40,7 +40,7 @@ def callback():
 @handler.add(MessageEvent, message=TextMessage)
 def pretty_echo(event):
     
-    if event.source.user_id != "Udeadbeefdeadbeefdeadbeefdeadbeef":
+    if event.source.user_id != "Uc5df4ddce57b7997360dac4805a42fca":
         
         # Phoebe 愛唱歌
         pretty_note = '♫♪♬'
